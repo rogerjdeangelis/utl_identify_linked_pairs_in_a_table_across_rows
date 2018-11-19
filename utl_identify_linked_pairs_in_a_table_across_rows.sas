@@ -1,10 +1,14 @@
 Identify linked pairs in a table across rows
 
+Recent SAS only solution on end by
+Keintz, Mark
+mkeintz@wharton.upenn.edu
+
     TWO SOLUTIONS
 
           1. Simple exaample
           2. More realistic example (on end)
-
+          3. SAS Proc Opnet (Mark)
 A one liner in R?
 
 StackOverfow SAS
@@ -438,5 +442,88 @@ Obs    A
  1     B:C:D:E:A
  2     G:H:I:J:K:L:M:N:O:F
  3     R:S:T:Q:P
+
+
+
+*__  __            _
+|  \/  | __ _ _ __| | __
+| |\/| |/ _` | '__| |/ /
+| |  | | (_| | |  |   <
+|_|  |_|\__,_|_|  |_|\_\
+
+;
+
+Recent SAS only solution on end by
+Keintz, Mark
+mkeintz@wharton.upenn.edu
+
+Roger,
+
+If there is a SAS/OR license, then PROC OPTNET can be used,
+not only because it identifies connected components, but it also
+generates a macrovar (_OROPTNET_CONCOMP_) that includes the number
+of connected components found, which is assigned to macrovar N_CC below.
+That makes it trivialto declare exactly the right number of
+NODELIST variables in the data want step:
+
+data have;
+  input fto :$7.;
+  from=scan(fto,1,':');
+  to=scan(fto,2,':');
+datalines;
+ 123:456
+ 111:222
+ 111:333
+ 222:333
+ 333:444
+ 333:555
+ 666:777
+ 444:888
+ 444:555
+ 888:777
+ 123:987
+ 654:321
+run;
+
+proc optnet data_links=have out_nodes=onodes (index=(concomp));
+  concomp;
+run;
+
+/*
+Up to 40 obs from ONODES total obs=13
+
+Obs    NODE    CONCOMP
+
+  1    123        1
+  2    456        1
+  3    111        2
+  4    222        2
+  5    333        2
+  6    444        2
+  7    555        2
+  8    666        2
+  9    777        2
+ 10    888        2
+ 11    987        1
+ 12    654        3
+ 13    321        3
+*/
+
+%let N_CC= %scan(&_OROPTNET_CONCOMP_,4,%str( =));
+
+data want (keep=v:);
+  array NODELIST{&N_CC} $200;
+  do until (end_of_nodes);
+    set onodes end=end_of_nodes;
+    nodelist{concomp}=catx(':',nodelist{concomp},node);
+  end;
+run;
+
+regards,
+Mark
+
+
+
+
 
 
